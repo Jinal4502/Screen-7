@@ -42,7 +42,7 @@ def load_msa_data(parquet_bytes, msa):
     return df
 
 # --- Main App ---
-DROPBOX_URL = "https://www.dropbox.com/scl/fi/2ajbqq5yqt637kjjez1pk/combined_data_screen7.parquet?rlkey=mun8x2i6teb6h4a9r69jgsk9k&st=wvis2997&dl=0"
+DROPBOX_URL = "https://www.dropbox.com/scl/fi/2ajbqq5yqt637kjjez1pk/combined_data_screen7.parquet?rlkey=mun8x2i6teb6h4a9r69jgsk9k&st=wvis2997&dl=1"
 parquet_bytes = load_parquet_from_url(DROPBOX_URL)
 
 # Sidebar Filters
