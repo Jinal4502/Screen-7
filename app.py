@@ -33,7 +33,7 @@ def load_msa_data(parquet_file, msa):
     return df
 
 # Setup
-COMBINED_PARQUET_FILE = "/Users/jjvyas1/Downloads/lightcast_msa_exploration/cleaned_data.csv"
+COMBINED_PARQUET_FILE = "https://www.dropbox.com/scl/fi/2ajbqq5yqt637kjjez1pk/combined_data_screen7.parquet?rlkey=lnzw5cpsaoovylg0jpnp7w5rw&dl=0"
 
 # Sidebar Filters
 st.sidebar.title("Job Market Filters")
