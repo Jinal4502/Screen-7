@@ -4,6 +4,22 @@ import plotly.express as px
 import ast
 import io
 import pyarrow.parquet as pq
+import requests
+import os
+
+@st.cache_data
+def download_parquet_file(dropbox_url):
+    # Convert dropbox share link to direct download link
+    direct_link = dropbox_url.replace('?dl=0', '?dl=1')
+    local_file = "combined_data.parquet"
+
+    if not os.path.exists(local_file):
+        with requests.get(direct_link, stream=True) as r:
+            r.raise_for_status()
+            with open(local_file, 'wb') as f:
+                for chunk in r.iter_content(chunk_size=8192):
+                    f.write(chunk)
+    return local_file
 
 @st.cache_data
 def list_msas_from_parquet(parquet_file):
@@ -14,7 +30,6 @@ def list_msas_from_parquet(parquet_file):
 
 @st.cache_data
 def load_msa_data(parquet_file, msa):
-    # Define needed columns
     columns_needed = [
         "TITLE_NAME", "SALARY_FROM", "SALARY_TO", "MIN_YEARS_EXPERIENCE", "MAX_YEARS_EXPERIENCE",
         "SKILLS_NAME", "EMPLOYMENT_TYPE_NAME", "REMOTE_TYPE_NAME", "COMPANY_NAME",
@@ -22,7 +37,6 @@ def load_msa_data(parquet_file, msa):
         "SPECIALIZED_SKILLS_NAME", "CERTIFICATIONS_NAME", "COMMON_SKILLS_NAME", "MSA_NAME"
     ]
 
-    # Load only data for selected MSA (predicate pushdown)
     df = pd.read_parquet(parquet_file, columns=columns_needed, filters=[("MSA_NAME", "==", msa)])
 
     # Clean skill columns
@@ -33,7 +47,8 @@ def load_msa_data(parquet_file, msa):
     return df
 
 # Setup
-COMBINED_PARQUET_FILE = "https://www.dropbox.com/scl/fi/2ajbqq5yqt637kjjez1pk/combined_data_screen7.parquet?rlkey=lnzw5cpsaoovylg0jpnp7w5rw&dl=0"
+DROPBOX_URL = "https://www.dropbox.com/scl/fi/2ajbqq5yqt637kjjez1pk/combined_data_screen7.parquet?rlkey=lnzw5cpsaoovylg0jpnp7w5rw&dl=0"
+COMBINED_PARQUET_FILE = download_parquet_file(DROPBOX_URL)
 
 # Sidebar Filters
 st.sidebar.title("Job Market Filters")
@@ -76,6 +91,7 @@ st.download_button(
     file_name=f"filtered_jobs_{msa.replace(' ', '_')}.csv",
     mime="text/csv"
 )
+
 
 # Industry (NAICS2, NAICS4, NAICS6)
 for level, label in [("NAICS2_NAME", "NAICS 2")]:
