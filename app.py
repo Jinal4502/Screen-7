@@ -8,11 +8,8 @@ import requests
 
 @st.cache_data
 def load_parquet_from_url(dropbox_url):
-    # Convert Dropbox share URL to direct download URL
-    direct_link = dropbox_url.replace('?dl=0', '?dl=1')
-
     # Stream download into memory (BytesIO)
-    response = requests.get(direct_link, stream=True)
+    response = requests.get(dropbox_url, stream=True)
     response.raise_for_status()
 
     parquet_bytes = io.BytesIO(response.content)
@@ -45,7 +42,7 @@ def load_msa_data(parquet_bytes, msa):
     return df
 
 # --- Main App ---
-DROPBOX_URL = "https://www.dropbox.com/scl/fi/2ajbqq5yqt637kjjez1pk/combined_data_screen7.parquet?rlkey=lnzw5cpsaoovylg0jpnp7w5rw&dl=0"
+DROPBOX_URL = "https://www.dropbox.com/scl/fi/2ajbqq5yqt637kjjez1pk/combined_data_screen7.parquet?rlkey=lnzw5cpsaoovylg0jpnp7w5rw&dl=1"
 parquet_bytes = load_parquet_from_url(DROPBOX_URL)
 
 # Sidebar Filters
