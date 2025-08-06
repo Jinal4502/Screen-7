@@ -5,31 +5,28 @@ import ast
 import io
 import pyarrow.parquet as pq
 import requests
-import os
 
 @st.cache_data
-def download_parquet_file(dropbox_url):
-    # Convert dropbox share link to direct download link
+def load_parquet_from_url(dropbox_url):
+    # Convert Dropbox share URL to direct download URL
     direct_link = dropbox_url.replace('?dl=0', '?dl=1')
-    local_file = "combined_data.parquet"
 
-    if not os.path.exists(local_file):
-        with requests.get(direct_link, stream=True) as r:
-            r.raise_for_status()
-            with open(local_file, 'wb') as f:
-                for chunk in r.iter_content(chunk_size=8192):
-                    f.write(chunk)
-    return local_file
+    # Stream download into memory (BytesIO)
+    response = requests.get(direct_link, stream=True)
+    response.raise_for_status()
+
+    parquet_bytes = io.BytesIO(response.content)
+    return parquet_bytes
 
 @st.cache_data
-def list_msas_from_parquet(parquet_file):
-    # Read only MSA_NAME column metadata to get unique MSAs
-    table = pq.read_table(parquet_file, columns=['MSA_NAME'])
+def list_msas_from_parquet(parquet_bytes):
+    # Read only MSA_NAME column to get unique MSAs
+    table = pq.read_table(parquet_bytes, columns=['MSA_NAME'])
     msa_names = table.column('MSA_NAME').to_pylist()
     return sorted(list(set(msa_names)))
 
 @st.cache_data
-def load_msa_data(parquet_file, msa):
+def load_msa_data(parquet_bytes, msa):
     columns_needed = [
         "TITLE_NAME", "SALARY_FROM", "SALARY_TO", "MIN_YEARS_EXPERIENCE", "MAX_YEARS_EXPERIENCE",
         "SKILLS_NAME", "EMPLOYMENT_TYPE_NAME", "REMOTE_TYPE_NAME", "COMPANY_NAME",
@@ -37,7 +34,8 @@ def load_msa_data(parquet_file, msa):
         "SPECIALIZED_SKILLS_NAME", "CERTIFICATIONS_NAME", "COMMON_SKILLS_NAME", "MSA_NAME"
     ]
 
-    df = pd.read_parquet(parquet_file, columns=columns_needed, filters=[("MSA_NAME", "==", msa)])
+    table = pq.read_table(parquet_bytes, columns=columns_needed, filters=[("MSA_NAME", "==", msa)])
+    df = table.to_pandas()
 
     # Clean skill columns
     for col in ['SKILLS_NAME', 'SPECIALIZED_SKILLS_NAME', 'CERTIFICATIONS_NAME', 'COMMON_SKILLS_NAME']:
@@ -46,15 +44,15 @@ def load_msa_data(parquet_file, msa):
 
     return df
 
-# Setup
+# --- Main App ---
 DROPBOX_URL = "https://www.dropbox.com/scl/fi/2ajbqq5yqt637kjjez1pk/combined_data_screen7.parquet?rlkey=lnzw5cpsaoovylg0jpnp7w5rw&dl=0"
-COMBINED_PARQUET_FILE = download_parquet_file(DROPBOX_URL)
+parquet_bytes = load_parquet_from_url(DROPBOX_URL)
 
 # Sidebar Filters
 st.sidebar.title("Job Market Filters")
-available_msas = list_msas_from_parquet(COMBINED_PARQUET_FILE)
+available_msas = list_msas_from_parquet(parquet_bytes)
 msa = st.sidebar.selectbox("Select MSA", available_msas)
-df = load_msa_data(COMBINED_PARQUET_FILE, msa)
+df = load_msa_data(parquet_bytes, msa)
 
 # Sidebar Filters
 job_type = st.sidebar.multiselect("Employment Type", df['EMPLOYMENT_TYPE_NAME'].dropna().unique())
@@ -91,8 +89,6 @@ st.download_button(
     file_name=f"filtered_jobs_{msa.replace(' ', '_')}.csv",
     mime="text/csv"
 )
-
-
 # Industry (NAICS2, NAICS4, NAICS6)
 for level, label in [("NAICS2_NAME", "NAICS 2")]:
     if level in filtered_df.columns:
